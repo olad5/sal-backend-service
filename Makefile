@@ -1,2 +1,2 @@
 run: 
-		go run cmd/main.go 
+		PORT=4000 go run cmd/main.go 
