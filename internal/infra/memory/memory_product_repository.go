@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/olad5/sal-backend-service/internal/domain"
@@ -9,29 +10,36 @@ import (
 )
 
 type MemoryProductRepository struct {
-	products []domain.Product
+	store map[uuid.UUID]domain.Product
+	lock  sync.RWMutex
 }
 
 func NewMemoryProductRepo() (*MemoryProductRepository, error) {
-	return &MemoryProductRepository{products: []domain.Product{}}, nil
+	return &MemoryProductRepository{
+		map[uuid.UUID]domain.Product{},
+		sync.RWMutex{},
+	}, nil
 }
 
 func (m *MemoryProductRepository) CreateProduct(ctx context.Context, product domain.Product) error {
-	m.products = append(m.products, product)
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	m.store[product.SKUID] = product
 	return nil
 }
 
-func (m *MemoryProductRepository) GetProductByProductId(ctx context.Context, productId uuid.UUID) (domain.Product, error) {
-	indexOfExistingProduct, err := m.getIndexOfProduct(productId)
-	if err != nil {
-		return domain.Product{}, err
+func (m *MemoryProductRepository) GetProductBySkuId(ctx context.Context, skuId uuid.UUID) (domain.Product, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	if existingProduct, ok := m.store[skuId]; ok {
+		return existingProduct, nil
 	}
-	return m.products[indexOfExistingProduct], nil
+	return domain.Product{}, infra.ErrProductNotFound
 }
 
 func (m *MemoryProductRepository) GetProductsByMerchantId(ctx context.Context, merchantId uuid.UUID) ([]domain.Product, error) {
 	results := []domain.Product{}
-	for _, product := range m.products {
+	for _, product := range m.store {
 		if product.MerchantId == merchantId {
 			results = append(results, product)
 		}
@@ -40,33 +48,16 @@ func (m *MemoryProductRepository) GetProductsByMerchantId(ctx context.Context, m
 }
 
 func (m *MemoryProductRepository) UpdateProductByProductId(ctx context.Context, updatedProduct domain.Product) error {
-	indexOfExistingProduct, err := m.getIndexOfProduct(updatedProduct.SKUID)
-	if err != nil {
-		return err
-	}
-	m.products[indexOfExistingProduct] = updatedProduct
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	m.store[updatedProduct.SKUID] = updatedProduct
 	return nil
 }
 
-func (m *MemoryProductRepository) DeleteProductByProductId(ctx context.Context, productId uuid.UUID) error {
-	indexToRemove, err := m.getIndexOfProduct(productId)
-	if err != nil {
-		return err
-	}
-
-	existingProducts := m.products
-	newSlice := []domain.Product{}
-	m.products = append(newSlice, existingProducts[:indexToRemove]...)
-	m.products = append(newSlice, existingProducts[indexToRemove:]...)
+func (m *MemoryProductRepository) DeleteProductBySkuId(ctx context.Context, skuId uuid.UUID) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	delete(m.store, skuId)
 
 	return nil
-}
-
-func (m *MemoryProductRepository) getIndexOfProduct(productId uuid.UUID) (int, error) {
-	for index, product := range m.products {
-		if product.SKUID == productId {
-			return index, nil
-		}
-	}
-	return 0, infra.ErrProductNotFound
 }

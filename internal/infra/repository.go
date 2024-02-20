@@ -12,8 +12,8 @@ var ErrProductNotFound = errors.New("product not found")
 
 type ProductRepository interface {
 	CreateProduct(ctx context.Context, product domain.Product) error
-	GetProductByProductId(ctx context.Context, productId uuid.UUID) (domain.Product, error)
+	GetProductBySkuId(ctx context.Context, skuId uuid.UUID) (domain.Product, error)
 	GetProductsByMerchantId(ctx context.Context, merchantId uuid.UUID) ([]domain.Product, error)
 	UpdateProductByProductId(ctx context.Context, product domain.Product) error
-	DeleteProductByProductId(ctx context.Context, productId uuid.UUID) error
+	DeleteProductBySkuId(ctx context.Context, skuId uuid.UUID) error
 }

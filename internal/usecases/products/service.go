@@ -25,18 +25,18 @@ func NewProductService(productRepo infra.ProductRepository) (*ProductService, er
 	return &ProductService{productRepo}, nil
 }
 
-func (p *ProductService) CreateProduct(ctx context.Context, merchantId, skuId uuid.UUID, name, description string, price int64) (domain.Product, error) {
-	existingProduct, err := p.productRepo.GetProductByProductId(ctx, skuId)
+func (p *ProductService) CreateProduct(ctx context.Context, merchantId, skuId uuid.UUID, name, description string, price float64) (domain.Product, error) {
+	existingProduct, err := p.productRepo.GetProductBySkuId(ctx, skuId)
 	if err == nil && existingProduct.SKUID == skuId {
 		return domain.Product{}, ErrProductAlreadyExists
 	}
 
 	newProduct := domain.Product{
 		SKUID:       skuId,
+		MerchantId:  merchantId,
 		Name:        name,
 		Description: description,
 		Price:       price,
-		MerchantId:  merchantId,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -49,7 +49,7 @@ func (p *ProductService) CreateProduct(ctx context.Context, merchantId, skuId uu
 }
 
 func (p *ProductService) UpdateProduct(ctx context.Context, merchantId, skuId uuid.UUID, name, description string, price int64) (domain.Product, error) {
-	existingProduct, err := p.productRepo.GetProductByProductId(ctx, skuId)
+	existingProduct, err := p.productRepo.GetProductBySkuId(ctx, skuId)
 	if err != nil {
 		return domain.Product{}, err
 	}
@@ -81,12 +81,12 @@ func (p *ProductService) GetProductsByMerchantId(ctx context.Context, merchantId
 }
 
 func (p *ProductService) DeleteProduct(ctx context.Context, productId uuid.UUID) error {
-	_, err := p.productRepo.GetProductByProductId(ctx, productId)
+	_, err := p.productRepo.GetProductBySkuId(ctx, productId)
 	if err != nil {
 		return err
 	}
 
-	err = p.productRepo.DeleteProductByProductId(ctx, productId)
+	err = p.productRepo.DeleteProductBySkuId(ctx, productId)
 	if err != nil {
 		return err
 	}
