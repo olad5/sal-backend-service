@@ -10,7 +10,7 @@ type Product struct {
 	SKUID       uuid.UUID
 	Name        string
 	Description string
-	Price       int64
+	Price       float64
 	MerchantId  uuid.UUID
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
