@@ -70,14 +70,5 @@ func (p ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	utils.SuccessResponse(w, "product created successfully",
-		map[string]interface{}{
-			"sku_id":      newProduct.SKUID,
-			"name":        newProduct.Name,
-			"description": newProduct.Description,
-			"price":       newProduct.Price,
-			"merchant_id": newProduct.MerchantId,
-			"created_at":  newProduct.CreatedAt,
-			"updated_at":  newProduct.UpdatedAt,
-		})
+	utils.SuccessResponse(w, "product created successfully", ToProductDTO(newProduct))
 }
