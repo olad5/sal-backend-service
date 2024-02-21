@@ -312,19 +312,19 @@ func TestFetchMerchantProducts(t *testing.T) {
 			for _, item := range items {
 				product, ok := item.(map[string]interface{})
 				if !ok {
-					t.Fatal()
+					t.Fatalf("Unable to get product from response")
 				}
 				merchantID, ok := product["merchant_id"].(string)
 				if !ok {
-					t.Fatal()
+					t.Fatalf("Unable to get merchantID from product")
 				}
 
 				if merchantID != merchantAId.String() {
-					t.Fatal()
+					t.Fatalf("merchantID is not the same")
 				}
 			}
 			if len(items) != numberOfRecords {
-				t.Fatal()
+				t.Fatalf("number of records are not the same")
 			}
 		},
 	)
@@ -351,7 +351,7 @@ func TestFetchMerchantProducts(t *testing.T) {
 			data := parsedRes["data"].(map[string]interface{})
 			items := data["products"].([]interface{})
 			if len(items) > 0 {
-				t.Fatal()
+				t.Fatalf("number of records are not the same")
 			}
 		},
 	)
@@ -367,7 +367,7 @@ func createProduct(t testing.TB, np Product) uuid.UUID {
 	response := tests.ExecuteRequest(req, r)
 	data := tests.ParseResponse(t, response)["data"].(map[string]interface{})
 	if id, ok := data["sku_id"].(string); !ok && id == np.SKUID.String() {
-		t.Fatal()
+		t.Fatalf("unable to create product")
 	}
 
 	return np.SKUID
