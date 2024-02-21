@@ -141,3 +141,111 @@ func TestCreateProduct(t *testing.T) {
 		},
 	)
 }
+
+func TestUpdateProduct(t *testing.T) {
+	route := "/api/products"
+	t.Run("test for invalid json request body",
+		func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodPost, route, nil)
+			response := tests.ExecuteRequest(req, r)
+			tests.AssertStatusCode(t, http.StatusBadRequest, response.Code)
+		},
+	)
+	t.Run(`Given a merchant wants to update a product with valid data,
+         When the update product endpoint is called with the correct SKU ID,
+         Then the product information should be updated in the database,
+         And the response status should be 200 OK. `,
+		func(t *testing.T) {
+			merchantId := uuid.New()
+			skuId := uuid.New()
+			var price float64 = 30.00
+			np := Product{
+				MerchantId:  merchantId,
+				SKUID:       skuId,
+				Name:        "some-product-name",
+				Description: "some-product-description",
+				Price:       price,
+			}
+			createdProductSkuId := createProduct(t, np)
+			updatedPrice := 10.01
+			updateReq := Product{
+				MerchantId:  merchantId,
+				SKUID:       createdProductSkuId,
+				Name:        "updated-product-name",
+				Description: "updated-product-description",
+				Price:       updatedPrice,
+			}
+
+			requestBody, err := json.Marshal(&updateReq)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req, _ := http.NewRequest(http.MethodPatch, route+"/"+createdProductSkuId.String(), bytes.NewBuffer(requestBody))
+			response := tests.ExecuteRequest(req, r)
+			tests.AssertStatusCode(t, http.StatusOK, response.Code)
+			parsedRes := tests.ParseResponse(t, response)
+			message := parsedRes["message"].(string)
+			tests.AssertResponseMessage(t, message, "product updated successfully")
+			data := parsedRes["data"].(map[string]interface{})
+			tests.AssertResponseMessage(t, data["merchant_id"].(string), merchantId.String())
+			tests.AssertResponseMessage(t, data["sku_id"].(string), createdProductSkuId.String())
+			tests.AssertResponseMessage(t, data["name"].(string), updateReq.Name)
+			tests.AssertResponseMessage(t, data["description"].(string), updateReq.Description)
+			if responsePrice, ok := data["price"].(float64); ok {
+				tests.AssertResponseMessage(t, strconv.FormatFloat(responsePrice, 'f', -1, 64), strconv.FormatFloat(updatedPrice, 'f', -1, 64))
+			}
+		},
+	)
+
+	t.Run(`Given a merchant wants to update a product that does not exist,
+         When the update product endpoint is called with a non-existent SKU ID,
+         Then the endpoint should return a 404 Not Found status,
+         And the product information should not be updated in the database. `,
+		func(t *testing.T) {
+			nonExisitentSkuId := uuid.New()
+			updatedPrice := 10.01
+			updateReq := Product{
+				MerchantId:  uuid.New(),
+				SKUID:       nonExisitentSkuId,
+				Name:        "updated-product-name",
+				Description: "updated-product-description",
+				Price:       updatedPrice,
+			}
+
+			requestBody, err := json.Marshal(&updateReq)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req, _ := http.NewRequest(http.MethodPatch, route+"/"+nonExisitentSkuId.String(), bytes.NewBuffer(requestBody))
+			response := tests.ExecuteRequest(req, r)
+			tests.AssertStatusCode(t, http.StatusNotFound, response.Code)
+			parsedRes := tests.ParseResponse(t, response)
+			message := parsedRes["message"].(string)
+			tests.AssertResponseMessage(t, message, "product not found")
+		},
+	)
+}
+
+func createProduct(t testing.TB, np Product) uuid.UUID {
+	t.Helper()
+	requestBody, err := json.Marshal(&np)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, _ := http.NewRequest(http.MethodPost, "/api/products", bytes.NewBuffer(requestBody))
+	response := tests.ExecuteRequest(req, r)
+	data := tests.ParseResponse(t, response)["data"].(map[string]interface{})
+	if id, ok := data["sku_id"].(string); !ok && id == np.SKUID.String() {
+		t.Fatal()
+	}
+
+	return np.SKUID
+}
+
+type Product struct {
+	SKUID       uuid.UUID `json:"sku_id"`
+	MerchantId  uuid.UUID `json:"merchant_id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Price       float64   `json:"price"`
+}
