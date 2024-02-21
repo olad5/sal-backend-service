@@ -43,6 +43,7 @@ func NewHttpRouter(ctx context.Context) http.Handler {
 		r.Post("/api/products", productHandler.CreateProduct)
 		r.Patch("/api/products/{sku_id}", productHandler.EditProduct)
 		r.Delete("/api/products/{sku_id}", productHandler.DeleteProduct)
+		r.Get("/api/merchants/{merchant_id}/products", productHandler.FetchMerchantProducts)
 	})
 	return router
 }

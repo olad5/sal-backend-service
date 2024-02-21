@@ -27,3 +27,19 @@ func ToProductDTO(product domain.Product) ProductDTO {
 		UpdatedAt:   &product.UpdatedAt,
 	}
 }
+
+type ProductPagedDTO struct {
+	Limit    int          `json:"limit"`
+	Products []ProductDTO `json:"products"`
+}
+
+func ToProductPagedDTO(products []domain.Product) ProductPagedDTO {
+	items := []ProductDTO{}
+	for _, product := range products {
+		items = append(items, ToProductDTO(product))
+	}
+	return ProductPagedDTO{
+		Limit:    len(items),
+		Products: items,
+	}
+}
