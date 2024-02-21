@@ -48,17 +48,37 @@ func (p *ProductService) CreateProduct(ctx context.Context, merchantId, skuId uu
 	return newProduct, nil
 }
 
-func (p *ProductService) UpdateProduct(ctx context.Context, merchantId, skuId uuid.UUID, name, description string, price int64) (domain.Product, error) {
+func (p *ProductService) UpdateProduct(ctx context.Context, merchantId, skuId uuid.UUID, name, description string, price float64) (domain.Product, error) {
 	existingProduct, err := p.productRepo.GetProductBySkuId(ctx, skuId)
 	if err != nil {
 		return domain.Product{}, err
 	}
+	var updatedName string
+	if name != "" {
+		updatedName = name
+	} else {
+		updatedName = existingProduct.Name
+	}
+
+	var updatedDescription string
+	if name != "" {
+		updatedDescription = description
+	} else {
+		updatedDescription = existingProduct.Description
+	}
+
+	var updatedPrice float64
+	if name != "" {
+		updatedPrice = price
+	} else {
+		updatedPrice = existingProduct.Price
+	}
 
 	updatedProduct := domain.Product{
 		SKUID:       existingProduct.SKUID,
-		Name:        "",
-		Description: "",
-		Price:       0,
+		Name:        updatedName,
+		Description: updatedDescription,
+		Price:       updatedPrice,
 		MerchantId:  existingProduct.MerchantId,
 		CreatedAt:   existingProduct.CreatedAt,
 		UpdatedAt:   time.Now(),

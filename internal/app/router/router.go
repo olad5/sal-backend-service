@@ -41,6 +41,7 @@ func NewHttpRouter(ctx context.Context) http.Handler {
 			middleware.SetHeader("Content-Type", "application/json"),
 		)
 		r.Post("/api/products", productHandler.CreateProduct)
+		r.Patch("/api/products/{sku_id}", productHandler.EditProduct)
 	})
 	return router
 }
