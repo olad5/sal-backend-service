@@ -144,13 +144,6 @@ func TestCreateProduct(t *testing.T) {
 
 func TestUpdateProduct(t *testing.T) {
 	route := "/api/products"
-	t.Run("test for invalid json request body",
-		func(t *testing.T) {
-			req, _ := http.NewRequest(http.MethodPost, route, nil)
-			response := tests.ExecuteRequest(req, r)
-			tests.AssertStatusCode(t, http.StatusBadRequest, response.Code)
-		},
-	)
 	t.Run(`Given a merchant wants to update a product with valid data,
          When the update product endpoint is called with the correct SKU ID,
          Then the product information should be updated in the database,
@@ -217,6 +210,66 @@ func TestUpdateProduct(t *testing.T) {
 				t.Fatal(err)
 			}
 			req, _ := http.NewRequest(http.MethodPatch, route+"/"+nonExisitentSkuId.String(), bytes.NewBuffer(requestBody))
+			response := tests.ExecuteRequest(req, r)
+			tests.AssertStatusCode(t, http.StatusNotFound, response.Code)
+			parsedRes := tests.ParseResponse(t, response)
+			message := parsedRes["message"].(string)
+			tests.AssertResponseMessage(t, message, "product not found")
+		},
+	)
+}
+
+func TestDeleteProduct(t *testing.T) {
+	route := "/api/products"
+	t.Run(`Given a merchant wants to delete an existing product with a valid SKU ID,
+         when they send a DELETE request to the delete product route,
+         then the product should be successfully deleted from the database,
+         and the response status should be 200 OK. `,
+		func(t *testing.T) {
+			merchantId := uuid.New()
+			skuId := uuid.New()
+			var price float64 = 30.00
+			np := Product{
+				MerchantId:  merchantId,
+				SKUID:       skuId,
+				Name:        "some-product-name",
+				Description: "some-product-description",
+				Price:       price,
+			}
+			createdProductSkuId := createProduct(t, np)
+			requestBody, err := json.Marshal(&struct {
+				MerchantId uuid.UUID `json:"merchant_id"`
+			}{
+				MerchantId: merchantId,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			req, _ := http.NewRequest(http.MethodDelete, route+"/"+createdProductSkuId.String(), bytes.NewBuffer(requestBody))
+			response := tests.ExecuteRequest(req, r)
+			tests.AssertStatusCode(t, http.StatusOK, response.Code)
+			parsedRes := tests.ParseResponse(t, response)
+			message := parsedRes["message"].(string)
+			tests.AssertResponseMessage(t, message, "product deleted successfully")
+		},
+	)
+
+	t.Run(`Given a merchant wants to delete a product with an invalid or non-existent SKU ID,
+         when they send a DELETE request to the delete product route,
+         then the product should not be deleted from the database,
+         and the response status should be 404 Not Found. `,
+		func(t *testing.T) {
+			nonExisitentSkuId := uuid.New()
+			requestBody, err := json.Marshal(&struct {
+				MerchantId uuid.UUID `json:"merchant_id"`
+			}{
+				MerchantId: uuid.New(),
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			req, _ := http.NewRequest(http.MethodDelete, route+"/"+nonExisitentSkuId.String(), bytes.NewBuffer(requestBody))
 			response := tests.ExecuteRequest(req, r)
 			tests.AssertStatusCode(t, http.StatusNotFound, response.Code)
 			parsedRes := tests.ParseResponse(t, response)
