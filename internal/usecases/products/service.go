@@ -16,7 +16,10 @@ type ProductService struct {
 	productRepo infra.ProductRepository
 }
 
-var ErrProductAlreadyExists = errors.New("product already exists")
+var (
+	ErrProductAlreadyExists = errors.New("product already exists")
+	ErrUserNotAuthorized    = errors.New("unauthorized")
+)
 
 func NewProductService(productRepo infra.ProductRepository) (*ProductService, error) {
 	if productRepo == nil {
@@ -53,6 +56,11 @@ func (p *ProductService) UpdateProduct(ctx context.Context, merchantId, skuId uu
 	if err != nil {
 		return domain.Product{}, err
 	}
+
+	if merchantId != existingProduct.MerchantId {
+		return domain.Product{}, ErrUserNotAuthorized
+	}
+
 	var updatedName string
 	if name != "" {
 		updatedName = name
@@ -100,13 +108,17 @@ func (p *ProductService) GetProductsByMerchantId(ctx context.Context, merchantId
 	return products, nil
 }
 
-func (p *ProductService) DeleteProduct(ctx context.Context, productId uuid.UUID) error {
-	_, err := p.productRepo.GetProductBySkuId(ctx, productId)
+func (p *ProductService) DeleteProduct(ctx context.Context, merchantId, skuId uuid.UUID) error {
+	existingProduct, err := p.productRepo.GetProductBySkuId(ctx, skuId)
 	if err != nil {
 		return err
 	}
 
-	err = p.productRepo.DeleteProductBySkuId(ctx, productId)
+	if merchantId != existingProduct.MerchantId {
+		return ErrUserNotAuthorized
+	}
+
+	err = p.productRepo.DeleteProductBySkuId(ctx, skuId)
 	if err != nil {
 		return err
 	}

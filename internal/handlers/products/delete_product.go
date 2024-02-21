@@ -14,7 +14,7 @@ import (
 	"github.com/olad5/sal-backend-service/pkg/utils"
 )
 
-func (p ProductHandler) EditProduct(w http.ResponseWriter, r *http.Request) {
+func (p ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := chi.URLParam(r, "sku_id")
 	if id == "" {
@@ -33,10 +33,7 @@ func (p ProductHandler) EditProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	type requestDTO struct {
-		MerchantId  string  `json:"merchant_id"`
-		Name        string  `json:"name"`
-		Description string  `json:"description"`
-		Price       float64 `json:"price"`
+		MerchantId string `json:"merchant_id"`
 	}
 
 	var request requestDTO
@@ -46,26 +43,13 @@ func (p ProductHandler) EditProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if request.Name == "" {
-		utils.ErrorResponse(w, "name required", http.StatusBadRequest)
-		return
-	}
-	if request.Description == "" {
-		utils.ErrorResponse(w, "description required", http.StatusBadRequest)
-		return
-	}
-	if request.Price < 0 {
-		utils.ErrorResponse(w, "price cannot be less than zero", http.StatusBadRequest)
-		return
-	}
-
 	merchantId, err := uuid.Parse(request.MerchantId)
 	if err != nil {
 		utils.ErrorResponse(w, appErrors.ErrInvalidID.Error(), http.StatusBadRequest)
 		return
 	}
 
-	updatedProduct, err := p.productService.UpdateProduct(ctx, merchantId, skuId, request.Name, request.Description, request.Price)
+	err = p.productService.DeleteProduct(ctx, merchantId, skuId)
 	if err != nil {
 		switch {
 		case errors.Is(err, infra.ErrProductNotFound):
@@ -80,5 +64,5 @@ func (p ProductHandler) EditProduct(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	utils.SuccessResponse(w, "product updated successfully", ToProductDTO(updatedProduct))
+	utils.SuccessResponse(w, "product deleted successfully", nil)
 }
