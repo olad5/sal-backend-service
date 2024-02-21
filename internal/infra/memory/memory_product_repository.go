@@ -2,12 +2,15 @@ package memory
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/google/uuid"
 	"github.com/olad5/sal-backend-service/internal/domain"
 	"github.com/olad5/sal-backend-service/internal/infra"
 )
+
+var ErrMemoryStoreAccess = errors.New("error accessing memory store")
 
 type MemoryProductRepository struct {
 	store map[uuid.UUID]domain.Product
@@ -24,6 +27,9 @@ func NewMemoryProductRepo() (*MemoryProductRepository, error) {
 func (m *MemoryProductRepository) CreateProduct(ctx context.Context, product domain.Product) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
+	if m.store == nil {
+		return ErrMemoryStoreAccess
+	}
 	m.store[product.SKUID] = product
 	return nil
 }
@@ -31,6 +37,9 @@ func (m *MemoryProductRepository) CreateProduct(ctx context.Context, product dom
 func (m *MemoryProductRepository) GetProductBySkuId(ctx context.Context, skuId uuid.UUID) (domain.Product, error) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
+	if m.store == nil {
+		return domain.Product{}, ErrMemoryStoreAccess
+	}
 	if existingProduct, ok := m.store[skuId]; ok {
 		return existingProduct, nil
 	}
@@ -40,6 +49,9 @@ func (m *MemoryProductRepository) GetProductBySkuId(ctx context.Context, skuId u
 func (m *MemoryProductRepository) GetProductsByMerchantId(ctx context.Context, merchantId uuid.UUID) ([]domain.Product, error) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
+	if m.store == nil {
+		return []domain.Product{}, ErrMemoryStoreAccess
+	}
 	results := []domain.Product{}
 	for _, product := range m.store {
 		if product.MerchantId == merchantId {
@@ -52,6 +64,10 @@ func (m *MemoryProductRepository) GetProductsByMerchantId(ctx context.Context, m
 func (m *MemoryProductRepository) UpdateProductByProductId(ctx context.Context, updatedProduct domain.Product) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
+	if m.store == nil {
+		return ErrMemoryStoreAccess
+	}
+
 	m.store[updatedProduct.SKUID] = updatedProduct
 	return nil
 }
@@ -59,6 +75,9 @@ func (m *MemoryProductRepository) UpdateProductByProductId(ctx context.Context, 
 func (m *MemoryProductRepository) DeleteProductBySkuId(ctx context.Context, skuId uuid.UUID) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
+	if m.store == nil {
+		return ErrMemoryStoreAccess
+	}
 	delete(m.store, skuId)
 
 	return nil
