@@ -7,10 +7,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/olad5/sal-backend-service/internal/app/router"
@@ -279,6 +281,82 @@ func TestDeleteProduct(t *testing.T) {
 	)
 }
 
+func TestFetchMerchantProducts(t *testing.T) {
+	t.Run(` Given a merchant A with ID 'merchant123' has products listed,
+    when the merchant requests to fetch products by their ID,
+    then the system should return all products associated with 'merchant123'.
+    `,
+		func(t *testing.T) {
+			merchantAId := uuid.New()
+			merchantBId := uuid.New()
+			numberOfRecords := 20
+			for i := 0; i < numberOfRecords; i++ {
+				skuId := uuid.New()
+				prd := buildProduct(merchantAId, skuId)
+				_ = createProduct(t, prd)
+			}
+			for i := 0; i < 5; i++ {
+				skuId := uuid.New()
+				prd := buildProduct(merchantBId, skuId)
+				_ = createProduct(t, prd)
+			}
+
+			req, _ := http.NewRequest(http.MethodGet, "/api/merchants"+"/"+merchantAId.String()+"/"+"products", nil)
+			response := tests.ExecuteRequest(req, r)
+			tests.AssertStatusCode(t, http.StatusOK, response.Code)
+			parsedRes := tests.ParseResponse(t, response)
+			message := parsedRes["message"].(string)
+			tests.AssertResponseMessage(t, message, "products retrieved successfully")
+			data := parsedRes["data"].(map[string]interface{})
+			items := data["products"].([]interface{})
+			for _, item := range items {
+				product, ok := item.(map[string]interface{})
+				if !ok {
+					t.Fatal()
+				}
+				merchantID, ok := product["merchant_id"].(string)
+				if !ok {
+					t.Fatal()
+				}
+
+				if merchantID != merchantAId.String() {
+					t.Fatal()
+				}
+			}
+			if len(items) != numberOfRecords {
+				t.Fatal()
+			}
+		},
+	)
+
+	t.Run(`Given a merchant B with a specific merchantID has no products listed,
+        when the merchant requests to fetch products by their ID,
+        then the system should return an empty list of products. `,
+		func(t *testing.T) {
+			merchantAId := uuid.New()
+			merchantBId := uuid.New()
+			numberOfRecords := 20
+			for i := 0; i < numberOfRecords; i++ {
+				skuId := uuid.New()
+				prd := buildProduct(merchantAId, skuId)
+				_ = createProduct(t, prd)
+			}
+
+			req, _ := http.NewRequest(http.MethodGet, "/api/merchants"+"/"+merchantBId.String()+"/"+"products", nil)
+			response := tests.ExecuteRequest(req, r)
+			tests.AssertStatusCode(t, http.StatusOK, response.Code)
+			parsedRes := tests.ParseResponse(t, response)
+			message := parsedRes["message"].(string)
+			tests.AssertResponseMessage(t, message, "products retrieved successfully")
+			data := parsedRes["data"].(map[string]interface{})
+			items := data["products"].([]interface{})
+			if len(items) > 0 {
+				t.Fatal()
+			}
+		},
+	)
+}
+
 func createProduct(t testing.TB, np Product) uuid.UUID {
 	t.Helper()
 	requestBody, err := json.Marshal(&np)
@@ -301,4 +379,20 @@ type Product struct {
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	Price       float64   `json:"price"`
+}
+
+func randomFloat64(min, max float64) float64 {
+	rand.Seed(time.Now().UnixNano())
+	return min + rand.Float64()*(max-min)
+}
+
+func buildProduct(merchantId, skuId uuid.UUID) Product {
+	np := Product{
+		MerchantId:  (merchantId),
+		SKUID:       skuId,
+		Name:        "some-product-name" + uuid.New().String(),
+		Description: "some-product-description" + uuid.New().String(),
+		Price:       randomFloat64(1, 100),
+	}
+	return np
 }
