@@ -38,6 +38,8 @@ func (m *MemoryProductRepository) GetProductBySkuId(ctx context.Context, skuId u
 }
 
 func (m *MemoryProductRepository) GetProductsByMerchantId(ctx context.Context, merchantId uuid.UUID) ([]domain.Product, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 	results := []domain.Product{}
 	for _, product := range m.store {
 		if product.MerchantId == merchantId {
