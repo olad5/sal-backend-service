@@ -35,15 +35,15 @@ func NewHttpRouter(ctx context.Context) http.Handler {
 		fmt.Fprint(w, "SAL Backend Service is live\n")
 	})
 
-	router.Group(func(r chi.Router) {
+	router.Route("/api", func(r chi.Router) {
 		r.Use(
 			middleware.AllowContentType("application/json"),
 			middleware.SetHeader("Content-Type", "application/json"),
 		)
-		r.Post("/api/products", productHandler.CreateProduct)
-		r.Patch("/api/products/{sku_id}", productHandler.EditProduct)
-		r.Delete("/api/products/{sku_id}", productHandler.DeleteProduct)
-		r.Get("/api/merchants/{merchant_id}/products", productHandler.FetchMerchantProducts)
+		r.Post("/products", productHandler.CreateProduct)
+		r.Patch("/products/{sku_id}", productHandler.EditProduct)
+		r.Delete("/products/{sku_id}", productHandler.DeleteProduct)
+		r.Get("/merchants/{merchant_id}/products", productHandler.FetchMerchantProducts)
 	})
 	return router
 }
